@@ -1,0 +1,5 @@
+C:\Users\Guillaume\WebServices\bin\Debug\ConsoleApplication.exe
+C:\Users\Guillaume\WebServices\bin\Debug\ConsoleApplication.pdb
+C:\Users\Guillaume\WebServices\obj\x86\Debug\Web.csprojResolveAssemblyReference.cache
+C:\Users\Guillaume\WebServices\obj\x86\Debug\ConsoleApplication.exe
+C:\Users\Guillaume\WebServices\obj\x86\Debug\ConsoleApplication.pdb
