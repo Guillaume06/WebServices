@@ -22,38 +22,47 @@ namespace WebService
         private static XmlDocument velibResponse;
         private static double departureLat;
         private static double departureLng;
+        private static double arrivalToStationDistance = 99999999;
+        private static double departureToStationDistance = 99999999;
         private static double arrivalLat;
         private static double arrivalLng;
+        private static double stationLat;
+        private static double stationLng;
         private static string closestStationFromDeparture;
         private static string closestStationFromArrival;
 
 
+
         public string submitPathData(PathData data){
 
-            WebRequest request = WebRequest.Create("https://maps.googleapis.com/maps/api/geocode/xml?address=" + data.Departure + "&key=AIzaSyBWOayAMh6TKPXkcEvcwDQI1iKyYl0_8Ow");
-            //WebRequest request = WebRequest.Create("https://maps.googleapis.com/maps/api/directions/xml?origin=" + data.Departure + "&destination=" + data.Arrival + "&key=AIzaSyBWOayAMh6TKPXkcEvcwDQI1iKyYl0_8Ow");
+            WebRequest requestDeparture = WebRequest.Create("https://maps.googleapis.com/maps/api/geocode/xml?address=" + data.Departure + "&key=AIzaSyBWOayAMh6TKPXkcEvcwDQI1iKyYl0_8Ow");
+            WebResponse responseDeparture = requestDeparture.GetResponse();
+            Stream dataStreamDeparture = responseDeparture.GetResponseStream();
+            StreamReader readerDeparture = new StreamReader(dataStreamDeparture); // Read the content.
+            string responseFromServerDeparture = readerDeparture.ReadToEnd(); // Put it in a String 
+            parseDepartureResult(responseFromServerDeparture);
 
+            WebRequest requestArrival = WebRequest.Create("https://maps.googleapis.com/maps/api/geocode/xml?address=" + data.Arrival + "&key=AIzaSyBWOayAMh6TKPXkcEvcwDQI1iKyYl0_8Ow");
+            WebResponse responseArrival = requestArrival.GetResponse();
+            Stream dataStreamArrival = responseArrival.GetResponseStream();
+            StreamReader readerArrival = new StreamReader(dataStreamArrival); // Read the content.
+            string responseFromServerArrival = readerArrival.ReadToEnd(); // Put it in a String 
+            parseArrivalResult(responseFromServerArrival);
 
-            WebResponse response = request.GetResponse();
+            getAllStations();
+            getClosestStationFromDeparture();
+            getClosestStationFromArrival();
 
-            Stream dataStream = response.GetResponseStream();
-
-            StreamReader reader = new StreamReader(dataStream); // Read the content.
-            string responseFromServer = reader.ReadToEnd(); // Put it in a String 
-
-            parseDepartureResult(responseFromServer);
-            parseArrivalResult(responseFromServer);
-            return "ok";
+            return closestStationFromDeparture + " " + closestStationFromArrival;
 
         }
 
-        public
-
-        static void getClosestStationFromArrival()
+        static void getClosestStationFromDeparture()
         {
             XmlNodeList elemList = velibResponse.GetElementsByTagName("marker");
             for (int i = 0; i < elemList.Count; i++)
             {
+                /*
                 //Get the number of the Station 
                 String numPoint = elemList[i].Attributes["number"].Value;
 
@@ -69,10 +78,37 @@ namespace WebService
                 XmlDocument doc_for_data = new XmlDocument();
                 doc_for_data.LoadXml(responseFromServer_for_data);
                 XmlNodeList elemList_for_data = doc_for_data.GetElementsByTagName("available");
+
+                if(int.Parse(elemList_for_data[0].FirstChild.Value) != 0)
+                {
+                */
+                    shortestDistance(elemList[i].Attributes["address"].Value, double.Parse(elemList[i].Attributes["lat"].Value, CultureInfo.InvariantCulture), double.Parse(elemList[i].Attributes["lng"].Value, CultureInfo.InvariantCulture));
             }
         }
 
-        static void parseResult(String s){
+        static void getClosestStationFromArrival()
+        {
+            XmlNodeList elemList = velibResponse.GetElementsByTagName("marker");
+            for (int i = 0; i < elemList.Count; i++)
+            {
+                shortestDistance(elemList[i].Attributes["address"].Value, double.Parse(elemList[i].Attributes["lat"].Value, CultureInfo.InvariantCulture), double.Parse(elemList[i].Attributes["lng"].Value, CultureInfo.InvariantCulture));
+            }
+        }
+
+        static bool shortestDistance(string address, double lat, double lng)
+        {
+            double distance = Distance(departureLat, departureLng, lat, lng);
+            if(distance < departureToStationDistance)
+            {
+                departureToStationDistance = distance;
+                closestStationFromDeparture = address;
+                return true;
+            }
+            return false;
+        }
+
+        static void parseResult(String s)
+        {
             XmlDocument doc = new XmlDocument();
             doc.LoadXml(s);
             XmlNode elem = doc.GetElementsByTagName("route")[0];
@@ -97,6 +133,30 @@ namespace WebService
                             XmlNode lng = node.ChildNodes[1];
                             departureLat = double.Parse(lat.InnerText, CultureInfo.InvariantCulture);
                             departureLng = double.Parse(lng.InnerText, CultureInfo.InvariantCulture);
+                        }
+                    }
+                }
+            }
+        }
+
+        static void parseStationResult(String s)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(s);
+            XmlNode elem = doc.GetElementsByTagName("result")[0];
+            XmlNodeList list = elem.ChildNodes;
+            foreach (XmlNode n in list)
+            {
+                if (n.Name == "geometry")
+                {
+                    foreach (XmlNode node in n)
+                    {
+                        if (node.Name == "location")
+                        {
+                            XmlNode lat = node.ChildNodes[0];
+                            XmlNode lng = node.ChildNodes[1];
+                            stationLat = double.Parse(lat.InnerText, CultureInfo.InvariantCulture);
+                            stationLng = double.Parse(lng.InnerText, CultureInfo.InvariantCulture);
                         }
                     }
                 }
