@@ -56,7 +56,16 @@ namespace WebService
             getAllStations();
             getClosestStationFromArrivalAndDeparture();
 
-            return closestStationFromDeparture + " " + closestStationFromArrival;
+            // Requête pour le chemin complet
+            WebRequest request = WebRequest.Create("https://maps.googleapis.com/maps/api/directions/xml?origin=" + data.Departure + "&destination=" + data.Arrival + "&waypoints="+ closestStationFromDeparture + "|" + closestStationFromArrival + "&key=AIzaSyBWOayAMh6TKPXkcEvcwDQI1iKyYl0_8Ow");
+            WebResponse response = request.GetResponse();
+            Stream dataStream = response.GetResponseStream();
+            StreamReader reader = new StreamReader(dataStream); // Read the content.
+            string responseFromServer = reader.ReadToEnd(); // Put it in a String 
+            //parseResult(responseFromServer);
+            //string finalRequest = "https://maps.googleapis.com/maps/api/directions/xml?origin=" + data.Departure + "&destination=" + data.Arrival + "&waypoints="+ closestStationFromDeparture + "|" + closestStationFromArrival + "&key=AIzaSyBWOayAMh6TKPXkcEvcwDQI1iKyYl0_8Ow";
+
+            return responseFromServer;
 
         }
 
@@ -68,7 +77,16 @@ namespace WebService
             XmlNodeList elemList = velibResponse.GetElementsByTagName("marker");
             for (int i = 0; i < elemList.Count; i++)
             {
-                string address = elemList[i].Attributes["address"].Value;
+                string[] addressSplit = elemList[i].Attributes["address"].Value.Split(new string[] { "FACE AU" }, StringSplitOptions.None);
+                string address;
+                if (addressSplit.Length > 1)
+                {
+                    address = addressSplit[1];
+                }
+                else
+                {
+                    address = addressSplit[0];
+                }
                 double lat = double.Parse(elemList[i].Attributes["lat"].Value, CultureInfo.InvariantCulture);
                 double lng = double.Parse(elemList[i].Attributes["lng"].Value, CultureInfo.InvariantCulture);
 
@@ -289,6 +307,18 @@ namespace WebService
             velibResponse = new XmlDocument();
             velibResponse.LoadXml(responseFromServer);
 
+        }
+
+        /**
+         * Renvoie le résultat d'un appel google pour trajet
+         **/
+        static void parseResult(String s)
+        {
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(s);
+            XmlNode elem = doc.GetElementsByTagName("route")[0];
+            Console.WriteLine(elem.Attributes["summary"]);
+            
         }
     }
 }
