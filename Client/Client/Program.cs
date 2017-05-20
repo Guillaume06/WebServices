@@ -9,6 +9,7 @@ using System.Xml;
 using System.Runtime.Serialization;
 using Client.ServiceReference1;
 
+
 namespace Client
 {
         class Program
@@ -31,7 +32,7 @@ namespace Client
                 data.Arrival = arrival;
                 data.Departure = departure;
                 CustomServiceClient service = new CustomServiceClient();
-                String response = service.submitPathData(data);
+                string response = service.submitPathData(data);
                 Console.WriteLine(response);
 
             }
