@@ -32,9 +32,12 @@ namespace WebService
         private static string closestStationFromArrival;
 
 
-
+        /**
+         * Foncton appelée lors de la soumission d'une requète, pour le moment retourne les deux noms de stations
+         **/
         public string submitPathData(PathData data){
 
+            // Adresse exacte du départ
             WebRequest requestDeparture = WebRequest.Create("https://maps.googleapis.com/maps/api/geocode/xml?address=" + data.Departure + "&key=AIzaSyBWOayAMh6TKPXkcEvcwDQI1iKyYl0_8Ow");
             WebResponse responseDeparture = requestDeparture.GetResponse();
             Stream dataStreamDeparture = responseDeparture.GetResponseStream();
@@ -42,6 +45,7 @@ namespace WebService
             string responseFromServerDeparture = readerDeparture.ReadToEnd(); // Put it in a String 
             parseDepartureResult(responseFromServerDeparture);
 
+            // Addresse exacte de l'arrivée
             WebRequest requestArrival = WebRequest.Create("https://maps.googleapis.com/maps/api/geocode/xml?address=" + data.Arrival + "&key=AIzaSyBWOayAMh6TKPXkcEvcwDQI1iKyYl0_8Ow");
             WebResponse responseArrival = requestArrival.GetResponse();
             Stream dataStreamArrival = responseArrival.GetResponseStream();
@@ -50,71 +54,115 @@ namespace WebService
             parseArrivalResult(responseFromServerArrival);
 
             getAllStations();
-            getClosestStationFromDeparture();
-            getClosestStationFromArrival();
+            getClosestStationFromArrivalAndDeparture();
 
             return closestStationFromDeparture + " " + closestStationFromArrival;
 
         }
 
-        static void getClosestStationFromDeparture()
+        /**
+         * Fonction qui va calculer et stocker les deux stations les plus proches, l'une pour le départ l'autre pour l'arrivée
+         **/
+        static void getClosestStationFromArrivalAndDeparture()
         {
             XmlNodeList elemList = velibResponse.GetElementsByTagName("marker");
             for (int i = 0; i < elemList.Count; i++)
             {
-                /*
-                //Get the number of the Station 
-                String numPoint = elemList[i].Attributes["number"].Value;
+                string address = elemList[i].Attributes["address"].Value;
+                double lat = double.Parse(elemList[i].Attributes["lat"].Value, CultureInfo.InvariantCulture);
+                double lng = double.Parse(elemList[i].Attributes["lng"].Value, CultureInfo.InvariantCulture);
 
-                // Create a request for the URL.
-                WebRequest request_for_data = WebRequest.Create("http://www.velib.paris/service/stationdetails/" + numPoint);
-                // Get Response 
-                WebResponse response_for_data = request_for_data.GetResponse();
-                // Open the stream using a StreamReader for easy access and put it into a string
-                Stream dataStream_for_data = response_for_data.GetResponseStream();
-                StreamReader reader_for_data = new StreamReader(dataStream_for_data); // Read the content.
-                string responseFromServer_for_data = reader_for_data.ReadToEnd(); // Put it in a String
-                // Parse the response and put the entries in XmlNodeList 
-                XmlDocument doc_for_data = new XmlDocument();
-                doc_for_data.LoadXml(responseFromServer_for_data);
-                XmlNodeList elemList_for_data = doc_for_data.GetElementsByTagName("available");
-
-                if(int.Parse(elemList_for_data[0].FirstChild.Value) != 0)
+                // Pour l'arrivée -> distance inférieure à celle stockée
+                if (shortestDistanceArrival(address, lat, lng))
                 {
-                */
-                    shortestDistance(elemList[i].Attributes["address"].Value, double.Parse(elemList[i].Attributes["lat"].Value, CultureInfo.InvariantCulture), double.Parse(elemList[i].Attributes["lng"].Value, CultureInfo.InvariantCulture));
+                    //Get the number of the Station 
+                    String numPoint = elemList[i].Attributes["number"].Value;
+ 
+                    // Create a request for the URL.
+                    WebRequest request_for_data = WebRequest.Create("http://www.velib.paris/service/stationdetails/" + numPoint);
+                    // Get Response 
+                    WebResponse response_for_data = request_for_data.GetResponse();
+                    // Open the stream using a StreamReader for easy access and put it into a string
+                    Stream dataStream_for_data = response_for_data.GetResponseStream();
+                    StreamReader reader_for_data = new StreamReader(dataStream_for_data); // Read the content.
+                    string responseFromServer_for_data = reader_for_data.ReadToEnd(); // Put it in a String
+                                                                                      // Parse the response and put the entries in XmlNodeList 
+                    XmlDocument doc_for_data = new XmlDocument();
+                    doc_for_data.LoadXml(responseFromServer_for_data);
+                    XmlNodeList elemList_for_data = doc_for_data.GetElementsByTagName("free");
+
+                    // Si il y a des places libres pour déposer son vélib -> update
+                    if (int.Parse(elemList_for_data[0].FirstChild.Value) != 0)
+                    {
+                        arrivalToStationDistance = Distance(arrivalLat, arrivalLng, lat, lng);
+                        closestStationFromArrival = address;
+                    }
+
+
+                }
+
+                // Pour le départ -> distance inférieure à celle stockée
+                if (shortestDistanceDeparture(address, lat, lng))
+                {
+                    //Get the number of the Station 
+                    String numPoint = elemList[i].Attributes["number"].Value;
+
+                    // Create a request for the URL.
+                    WebRequest request_for_data = WebRequest.Create("http://www.velib.paris/service/stationdetails/" + numPoint);
+                    // Get Response 
+                    WebResponse response_for_data = request_for_data.GetResponse();
+                    // Open the stream using a StreamReader for easy access and put it into a string
+                    Stream dataStream_for_data = response_for_data.GetResponseStream();
+                    StreamReader reader_for_data = new StreamReader(dataStream_for_data); // Read the content.
+                    string responseFromServer_for_data = reader_for_data.ReadToEnd(); // Put it in a String
+                                                                                      // Parse the response and put the entries in XmlNodeList 
+                    XmlDocument doc_for_data = new XmlDocument();
+                    doc_for_data.LoadXml(responseFromServer_for_data);
+                    XmlNodeList elemList_for_data = doc_for_data.GetElementsByTagName("available");
+
+                    // Si il y a des vélibs dispos -> update
+                    if (int.Parse(elemList_for_data[0].FirstChild.Value) != 0)
+                    {
+                        departureToStationDistance = Distance(departureLat, departureLng, lat, lng);
+                        closestStationFromDeparture = address;
+                    }
+
+
+                }
             }
         }
 
-        static void getClosestStationFromArrival()
+        /**
+         *  Return true si la station est plus proche de l'arrivée que celle enregistrée
+         **/
+        static bool shortestDistanceArrival(string address, double lat, double lng)
         {
-            XmlNodeList elemList = velibResponse.GetElementsByTagName("marker");
-            for (int i = 0; i < elemList.Count; i++)
+            double distance = Distance(arrivalLat, arrivalLng, lat, lng);
+            if(distance < arrivalToStationDistance)
             {
-                shortestDistance(elemList[i].Attributes["address"].Value, double.Parse(elemList[i].Attributes["lat"].Value, CultureInfo.InvariantCulture), double.Parse(elemList[i].Attributes["lng"].Value, CultureInfo.InvariantCulture));
-            }
-        }
-
-        static bool shortestDistance(string address, double lat, double lng)
-        {
-            double distance = Distance(departureLat, departureLng, lat, lng);
-            if(distance < departureToStationDistance)
-            {
-                departureToStationDistance = distance;
-                closestStationFromDeparture = address;
+                arrivalToStationDistance = distance;
+                closestStationFromArrival = address;
                 return true;
             }
             return false;
         }
 
-        static void parseResult(String s)
+        /**
+         *  Return true si la station est plus proche du départ que celle enregistrée
+         **/
+        static bool shortestDistanceDeparture(string address, double lat, double lng)
         {
-            XmlDocument doc = new XmlDocument();
-            doc.LoadXml(s);
-            XmlNode elem = doc.GetElementsByTagName("route")[0];
-            Console.WriteLine(elem.Attributes["route"]);
+            double distance = Distance(departureLat, departureLng, lat, lng);
+            if (distance < departureToStationDistance)
+            {
+                return true;
+            }
+            return false;
         }
 
+        /**
+         * Fonction de parse pour le point de départ -> stock la latitude et la longitude
+         **/
         static void parseDepartureResult(String s)
         {
             XmlDocument doc = new XmlDocument();
@@ -139,6 +187,10 @@ namespace WebService
             }
         }
 
+
+        /**
+         * Fonction de parse pour la station -> stock la latitude et la longitude
+         **/
         static void parseStationResult(String s)
         {
             XmlDocument doc = new XmlDocument();
@@ -163,6 +215,9 @@ namespace WebService
             }
         }
 
+        /**
+         * Fonction de parse pour le point d'arrivé -> stock la latitude et la longitude
+         **/
         static void parseArrivalResult(String s)
         {
             XmlDocument doc = new XmlDocument();
@@ -187,11 +242,18 @@ namespace WebService
             }
         }
 
+        /**
+         * Fait une conversion en radians
+         **/
         static double convertRad(double input)
         {
             return (Math.PI * input) / 180;
         }
 
+
+        /**
+         * Calcul de la distance entre deux points en fonction de la courbure de la terre
+         **/
         static double Distance(double lat_a_degre, double lon_a_degre, double lat_b_degre, double lon_b_degre)
         {
             int R = 6378000; //Rayon de la terre en mètre
@@ -204,6 +266,10 @@ namespace WebService
             return d;
         }
 
+
+        /**
+         * Charge le XML de toutes les stations
+         **/
         static void getAllStations()
         {
 
